@@ -1,5 +1,4 @@
-﻿import { type ReactNode, useId, type ChangeEvent } from "react"
-import type { HostObservable, InjectFace, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots"
+import React, { type ReactNode, useId, type ChangeEvent, useSyncExternalStore } from "react"
 import type { WebSearchAdvancedKey } from "./locales.ts"
 
 export interface WebSearchAdvancedSectionState {
@@ -9,20 +8,24 @@ export interface WebSearchAdvancedSectionState {
   baseURL: string
   maxUses: string
   model: string
+  apiKey: string
   dirty: boolean
   saving: boolean
   failed: boolean
 }
 
 export interface WebSearchAdvancedSectionInjected {
-  hooks: { settings: HostObservable<WebSearchAdvancedSectionState> }
+  store: {
+    getSnapshot(): WebSearchAdvancedSectionState
+    subscribe(listener: () => void): () => void
+  }
   t: (key: WebSearchAdvancedKey) => string
   edit: (field: string, text: string) => void
   discard: () => void
   save: () => void
 }
 
-export type WebSearchAdvancedSectionProps = PropsRuntime<"settings.section"> & InjectFace<WebSearchAdvancedSectionInjected>
+export type WebSearchAdvancedSectionProps = WebSearchAdvancedSectionInjected
 
 const st: Record<string, Record<string, string | number>> = {
   section: { padding: "24px 0" },
@@ -48,8 +51,8 @@ function m(base: Record<string, string | number>, overrides: Record<string, stri
 }
 
 export function WebSearchAdvancedSection(props: WebSearchAdvancedSectionProps): ReactNode {
-  const { t, useSettings, edit, discard, save } = props
-  const state = useSettings((s) => s)
+  const { store, t, edit, discard, save } = props
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const fieldId = useId()
 
   if (state.status !== "ready") {
@@ -86,7 +89,7 @@ export function WebSearchAdvancedSection(props: WebSearchAdvancedSectionProps): 
 
     React.createElement("div", { style: st.field },
       React.createElement("label", { style: st.label, htmlFor: fieldId + "-ak" }, t("card.apiKey")),
-      React.createElement("input", { id: fieldId + "-ak", style: disInput, type: "password", autoComplete: "off", value: "", placeholder: t("card.apiKeyHint"), disabled: dis, onChange: (e: ChangeEvent<HTMLInputElement>) => edit("apiKey", e.target.value) }),
+      React.createElement("input", { id: fieldId + "-ak", style: disInput, type: "password", autoComplete: "off", value: state.apiKey, placeholder: t("card.apiKeyHint"), disabled: dis, onChange: (e: ChangeEvent<HTMLInputElement>) => edit("apiKey", e.target.value) }),
       React.createElement("p", { style: st.hint }, t("card.apiKeyHint"))
     ),
 
