@@ -1,0 +1,4 @@
+﻿# @dsh/web-search-advanced bundle patch
+- insert:
+    - id: web-search-advanced
+      name: "@dsh/web-search-advanced"
