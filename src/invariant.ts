@@ -1,5 +1,5 @@
 /**
- * Package-owned invariant companion for @dsh/web-search-advanced.
+ * Package-owned invariant companion for @lp181818/web-search-advanced.
  * Current DSH invariants use the ctx.invariants service; this package keeps
  * an empty companion so the conventional invariant entry stays parseable.
  */

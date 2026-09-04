@@ -1,5 +1,5 @@
 /**
- * Standalone build for @dsh/web-search-advanced.
+ * Standalone build for @lp181818/web-search-advanced.
  *
  * Produces:
  *   lib/index.js   Node/host half

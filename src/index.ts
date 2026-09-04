@@ -1,5 +1,5 @@
 /**
- * @dsh/web-search-advanced: registers an enhanced web-search provider that
+ * @lp181818/web-search-advanced: registers an enhanced web-search provider that
  * supports both native DeepSeek `web_search_20250305` and OpenAI-compatible
  * (custom) search. The provider is registered into `ctx.web` and exposes a
  * configurable settings namespace (`web-search-advanced`).
@@ -8,7 +8,7 @@
  * convenience helpers, so the settings section is installed through the
  * current `settings.installSection` service API.
  *
- * @module @dsh/web-search-advanced
+ * @module @lp181818/web-search-advanced
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'

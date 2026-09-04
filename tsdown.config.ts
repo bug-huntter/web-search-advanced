@@ -1,5 +1,5 @@
 /**
- * Optional tsdown config for @dsh/web-search-advanced.
+ * Optional tsdown config for @lp181818/web-search-advanced.
  *
  * The primary build is `node build.mjs` (npm run build). This config keeps a
  * tsdown-compatible shape for tooling that wants one, and lists only externals

@@ -1,4 +1,4 @@
-# @dsh/web-search-advanced
+# @lp181818/web-search-advanced
 
 Advanced web search plugin for DeepSeek Harness (DSH), supporting both native
 DeepSeek search and OpenAI-compatible "Custom" search providers.
@@ -19,6 +19,35 @@ DeepSeek search and OpenAI-compatible "Custom" search providers.
 
 The current source no longer imports the removed `settingsNamespace`,
 `installSettingsSection`, or `@deepseek-ai/dsh-client-runtime` APIs.
+
+## Enabling this provider in DSH
+
+Installing this package does **not** make DSH use it automatically. The DSH
+base bundle pins `@deepseek-ai/dsh-web` to the official DeepSeek provider:
+
+```yaml
+searchProvider: deepseek-official
+```
+
+To route web searches through this plugin, add an override in the web
+profile's `cordis.patch.yml` (for example
+`~/.dsh/profiles/web/cordis.patch.yml`):
+
+```yaml
+- id: web
+  config:
+    searchProvider: web-search-advanced
+    fetchProvider: http
+```
+
+After editing the patch, restart `dsh web`.
+
+The `web-search-advanced` section in `settings.yaml` only takes effect after
+this routing is active. Inside that section:
+
+- `searchProvider: deepseek` uses this plugin's DeepSeek branch.
+- `searchProvider: custom` uses the configured OpenAI-compatible
+  `baseURL` / `model`, for example OpenRouter.
 
 ## Build
 
@@ -44,7 +73,7 @@ npm run sync
 If no profile has the package installed yet, install it first:
 
 ```powershell
-dsh plugin add @dsh/web-search-advanced
+dsh plugin add @lp181818/web-search-advanced
 ```
 
 Then restart DSH and apply the profile patch:

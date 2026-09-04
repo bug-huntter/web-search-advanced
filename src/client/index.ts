@@ -1,5 +1,5 @@
 /**
- * Browser half for @dsh/web-search-advanced.
+ * Browser half for @lp181818/web-search-advanced.
  *
  * DSH 0.1.2-alpha removed `@deepseek-ai/dsh-client-runtime`, so this half
  * keeps a small local store and talks only to current shell services
