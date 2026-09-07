@@ -4,9 +4,10 @@
  * (custom) search. The provider is registered into `ctx.web` and exposes a
  * configurable settings namespace (`web-search-advanced`).
  *
- * DSH 0.1.2 removed the `settingsNamespace` / `installSettingsSection`
- * convenience helpers, so the settings section is installed through the
- * current `settings.installSection` service API.
+ * The settings namespace is registered through the current settings service
+ * and exposed to the web client as a configurable provider. This is the same
+ * path used by the DSH vision plugin and is required by settingsScope on
+ * current DSH web hosts.
  *
  * @module @lp181818/web-search-advanced
  */
@@ -98,14 +99,46 @@ function resolveOptions(ctx: Context, config: Config): DeepSeekSearchProviderOpt
   }
 }
 
-/** Register the search provider and install its live settings section. */
+interface SettingsScope {
+  get(): Config
+}
+
+interface SettingsService {
+  register(namespace: string, schema: z<Config>, options: { base: Config }): SettingsScope
+}
+
+interface ConfigurableProviderRegistry {
+  registerConfigurableProviders(providers: Array<{
+    provider: string
+    displayName: string
+    settingsNs: string
+    settingsPath: string[]
+  }>): unknown
+}
+
+/** Register the search provider and expose its live settings namespace. */
 export function apply(ctx: Context, config: Config): void {
   let current: () => Config = () => config
+
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, WEB_SEARCH_ADVANCED_SETTINGS_NAMESPACE, Config, config, {
-      setSource: (source) => { current = source },
-      onChange: () => {},
-    })
+    const settings = settingsCtx.settings as unknown as SettingsService
+    const scope = settings.register(WEB_SEARCH_ADVANCED_SETTINGS_NAMESPACE, Config, { base: config })
+    current = () => scope.get()
   })
+
+  // settingsScope only exposes namespaces advertised as configurable
+  // providers. Without this registration the client card mounts but reports
+  // "Unavailable" because its namespace cannot be resolved.
+  ctx.inject(['settings', 'llm'], (both) => {
+    const llm = (both as unknown as { llm: ConfigurableProviderRegistry }).llm
+    const handle = llm.registerConfigurableProviders([{
+      provider: 'web-search-advanced-settings',
+      displayName: '网页搜索配置',
+      settingsNs: WEB_SEARCH_ADVANCED_SETTINGS_NAMESPACE,
+      settingsPath: [],
+    }])
+    both.effect(() => handle, 'web-search-advanced: settings namespace exposure')
+  })
+
   ctx.web.registerSearchProvider(new DeepSeekSearchProvider(() => resolveOptions(ctx, current())))
 }

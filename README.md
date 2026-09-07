@@ -13,7 +13,7 @@ DeepSeek search and OpenAI-compatible "Custom" search providers.
 
 | DSH version | Compatibility |
 | --- | --- |
-| `0.1.2-rc.1` and current 0.1.2 rc | Adapted against the local 0.1.2-rc.1 package APIs |
+| `0.1.2-rc.1` and current 0.1.2 rc | Registers and exposes the settings namespace through the current settings/LLM services |
 | `0.1.0-rc.7` through pre-0.1.2-alpha | Uses the shared `settings.register`/`installSection` service API; theoretically compatible |
 | before `0.1.0-rc.7` / 0.0.x | Not supported; those DSH versions lack the settings/section mechanism |
 
@@ -86,5 +86,6 @@ Then restart DSH and apply the profile patch:
 dsh web
 ```
 
-The plugin registers its provider through `ctx.web` and its settings section
-under the `web-search-advanced` settings namespace.
+The plugin registers its provider through `ctx.web`, registers the
+`web-search-advanced` settings namespace, and exposes that namespace to the
+web client through the configurable-provider registry.
