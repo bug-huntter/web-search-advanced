@@ -1,6 +1,4 @@
 ﻿node_modules/
 .workbuddy/
-build.mjs
 sync.mjs
 *.tgz
-lib/

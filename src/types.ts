@@ -2,7 +2,7 @@
  * Provider-private wire types for DeepSeek's Anthropic-compatible Messages API
  * and OpenAI-compatible search responses.
  *
- * @module @dsh/web-search-advanced/types
+ * @module @lp181818/web-search-advanced/types
  */
 
 export interface WebSearchResultItem {

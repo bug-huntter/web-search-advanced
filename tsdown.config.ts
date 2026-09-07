@@ -27,19 +27,23 @@ const EXTERNAL_MODULES = [
 
 const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf-8"))
 const PACKAGE_NAME = packageJson.name
+const HOST_EXTERNAL_MODULES = [
+  ...Object.keys(packageJson.dependencies ?? {}),
+  ...Object.keys(packageJson.peerDependencies ?? {}),
+]
 
 const libConfig = {
   name: PACKAGE_NAME,
   entry: { index: "src/index.ts", invariant: "src/invariant.ts" },
-  outDir: "lib", format: ["esm"], platform: "node", target: "es2024",
+  outDir: "lib", format: ["esm"], platform: "node", target: "es2024", tsconfig: resolve(import.meta.dirname, "tsconfig.json"),
   fixedExtension: false, dts: false, clean: false,
-  external: Object.keys(packageJson.dependencies ?? {}),
+  external: HOST_EXTERNAL_MODULES,
 }
 
 const clientConfig = {
   name: PACKAGE_NAME + "/client",
   entry: { client: "src/client/index.ts" },
-  outDir: "lib", format: "cjs", platform: "browser", dts: false, sourcemap: true, clean: false,
+  outDir: "lib", format: "cjs", platform: "browser", target: "es2020", tsconfig: resolve(import.meta.dirname, "tsconfig.json"), dts: false, sourcemap: true, clean: false,
   external: EXTERNAL_MODULES,
   noExternal: (id: string) => EXTERNAL_MODULES.includes(id) ? undefined : true,
   define: {

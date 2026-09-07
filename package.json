@@ -1,7 +1,11 @@
 {
-  "name": "@dsh/web-search-advanced",
+  "name": "@lp181818/web-search-advanced",
   "description": "Advanced web search plugin with native DeepSeek and OpenAI-compatible (custom) search provider support, with a settings card in the Settings sidebar",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bug-huntter/web-search-advanced.git"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -13,6 +17,9 @@
     },
     "./client": {
       "default": "./lib/client.js"
+    },
+    "./invariant": {
+      "default": "./lib/invariant.js"
     },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
@@ -35,7 +42,8 @@
   "scripts": {
     "build": "node build.mjs",
     "sync": "node sync.mjs",
-    "prepublishOnly": "node build.mjs"
+    "prepare": "node build.mjs",
+    "prepublishOnly": "npm run build"
   },
   "license": "MIT",
   "peerDependencies": {
@@ -59,13 +67,13 @@
     "react": "^18.0.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.12"
+    "lightningcss": "^1.29.2",
+    "tsdown": "^0.15.0"
   },
   "files": [
-    "lib/index.js",
-    "lib/client.js",
-    "lib/client.js.map",
+    "lib",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "SKILL.md"
   ]
 }

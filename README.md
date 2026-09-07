@@ -1,4 +1,4 @@
-﻿# @dsh/web-search-advanced
+# @lp181818/web-search-advanced
 
 Advanced web search plugin for DeepSeek Harness supporting both native DeepSeek search and OpenAI-compatible "Custom" search providers.
 
@@ -6,16 +6,24 @@ Advanced web search plugin for DeepSeek Harness supporting both native DeepSeek 
 
 - **Provider selector**: deepseek (native) or custom (OpenAI-compatible, e.g. OpenRouter)
 - **Settings card**: full configuration in Settings sidebar: provider choice, endpoint URL, model, API key, max searches
-- **Two search backends**: native DeepSeek web_search_20250305 or OpenAI-compatible web plugin
+- **Two search backends**: native DeepSeek `web_search_20250305` or OpenAI-compatible web plugin
 
 ## Installation
 
-1. Copy package into node_modules (or install from a registry)
-2. Apply cordis.patch.yml to the web profile bundle
-3. Restart Harness server
+Install from the GitHub repository or npm registry:
+
+```bash
+dsh plugin --profile web add github:bug-huntter/web-search-advanced
+```
+
+The package contains prebuilt `lib/` artifacts, and its `prepare` script also
+rebuilds them when a package manager installs the Git repository directly.
+
+After installation, apply `cordis.patch.yml` to the web profile bundle and
+restart the Harness server.
 
 ## Build
 
-```
-node build.mjs
+```bash
+npm run build
 ```
