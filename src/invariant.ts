@@ -1,9 +1,8 @@
-﻿/**
+/**
  * Package-owned invariant companion for @lp181818/web-search-advanced.
- * @module @lp181818/web-search-advanced/invariant
+ * Current DSH invariants use the ctx.invariants service; this package keeps
+ * an empty companion so the conventional invariant entry stays parseable.
  */
-import { declareInvariant } from '@deepseek-ai/dsh-invariants'
-const PACKAGE_NAME = '@lp181818/web-search-advanced'
-export const name = 'web-search-advanced-invariant'
-/** @internal */
-export const invariant = declareInvariant(PACKAGE_NAME, 'invariant')
+import type { Context } from '@deepseek-ai/cordis'
+
+export function apply(_ctx: Context): void {}
