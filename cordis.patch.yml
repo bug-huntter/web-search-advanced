@@ -1,4 +1,10 @@
 # @lp181818/web-search-advanced bundle patch
+- id: web
+  config:
+    # Select this package automatically as soon as it is installed.
+    # The settings page controls the provider used by this adapter.
+    searchProvider: web-search-advanced
+    fetchProvider: http
 - insert:
     - id: web-search-advanced
       name: "@lp181818/web-search-advanced"

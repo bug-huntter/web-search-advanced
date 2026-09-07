@@ -22,32 +22,22 @@ The current source no longer imports the removed `settingsNamespace`,
 
 ## Enabling this provider in DSH
 
-Installing this package does **not** make DSH use it automatically. The DSH
-base bundle pins `@deepseek-ai/dsh-web` to the official DeepSeek provider:
+Installing this package automatically routes the DSH `web` service to
+`web-search-advanced`; no manual `cordis.patch.yml` edit is required. After
+installation, restart `dsh web` and configure the package in the Web Search
+settings section.
 
-```yaml
-searchProvider: deepseek-official
-```
-
-To route web searches through this plugin, add an override in the web
-profile's `cordis.patch.yml` (for example
-`~/.dsh/profiles/web/cordis.patch.yml`):
-
-```yaml
-- id: web
-  config:
-    searchProvider: web-search-advanced
-    fetchProvider: http
-```
-
-After editing the patch, restart `dsh web`.
-
-The `web-search-advanced` section in `settings.yaml` only takes effect after
-this routing is active. Inside that section:
+Only the provider, API key, and model are required. The endpoint is optional:
+DeepSeek uses `https://api.deepseek.com/anthropic/v1`, while Custom uses
+`https://openrouter.ai/api/v1` when the endpoint is left blank. Inside the
+`web-search-advanced` settings namespace:
 
 - `searchProvider: deepseek` uses this plugin's DeepSeek branch.
 - `searchProvider: custom` uses the configured OpenAI-compatible
   `baseURL` / `model`, for example OpenRouter.
+
+The package patch also selects the built-in `http` fetch provider so search
+results can be opened without an additional profile change.
 
 ## Build
 

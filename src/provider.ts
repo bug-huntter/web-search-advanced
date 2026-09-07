@@ -19,7 +19,7 @@ export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-v4-flash'
 export const DEEPSEEK_DEFAULT_API_VERSION = '2023-06-01'
 export const DEEPSEEK_DEFAULT_MAX_TOKENS = 4096
 export const DEEPSEEK_DEFAULT_MAX_USES = 5
-const USER_AGENT = 'dsh-web-search-advanced/0.1.1'
+const USER_AGENT = 'dsh-web-search-advanced/0.1.3'
 
 export interface DeepSeekSearchLlmRequest {
   readonly endpoint: string

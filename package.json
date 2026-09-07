@@ -1,7 +1,7 @@
 {
   "name": "@lp181818/web-search-advanced",
   "description": "Advanced web search plugin with native DeepSeek and OpenAI-compatible (custom) search provider support, with a settings card in the Settings sidebar",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bug-huntter/web-search-advanced.git"
