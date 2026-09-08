@@ -11,6 +11,7 @@ import {
   type WebSearchAdvancedSectionInjected,
   type WebSearchAdvancedSectionState,
 } from './WebSearchAdvancedSection.tsx'
+import { testSearchConnection, type TestOutcome } from './testConnection.ts'
 
 export const WEB_SEARCH_ADVANCED_NS = 'web-search-advanced'
 const NS = 'web-search-advanced'
@@ -103,6 +104,8 @@ function buildState(
   drafts: Map<string, DraftEntry>,
   saving: boolean,
   failed: boolean,
+  testing: boolean,
+  testResult: TestOutcome | null,
 ): WebSearchAdvancedSectionState {
   const value = scopeSnapshot.value
   return {
@@ -116,6 +119,8 @@ function buildState(
     dirty: Array.from(drafts.values()).some(d => d.dirty),
     saving,
     failed,
+    testing,
+    testResult,
   }
 }
 
@@ -135,12 +140,25 @@ export function apply(ctx: ClientContext): void {
     const drafts = new Map<string, DraftEntry>()
     let saving = false
     let failed = false
-    const store = createStore(buildState(scope.getSnapshot(), drafts, saving, failed))
+    let testing = false
+    let testResult: TestOutcome | null = null
+    const store = createStore(buildState(scope.getSnapshot(), drafts, saving, failed, testing, testResult))
     const publish = (): void => {
-      store.set(buildState(scope.getSnapshot(), drafts, saving, failed))
+      store.set(buildState(scope.getSnapshot(), drafts, saving, failed, testing, testResult))
     }
     const unsubscribeScope = scope.subscribe(publish)
     ctx.effect(() => () => unsubscribeScope(), 'web-search-advanced: settings snapshot')
+
+    /** Current effective values: draft overrides on top of the saved snapshot. */
+    const draftValues = (): { searchProvider: string; baseURL: string; model: string; apiKey: string } => {
+      const value = scope.getSnapshot().value as Record<string, unknown> | undefined
+      return {
+        searchProvider: drafts.get('searchProvider')?.text ?? (typeof value?.searchProvider === 'string' ? value.searchProvider : 'deepseek'),
+        baseURL: drafts.get('baseURL')?.text ?? (typeof value?.baseURL === 'string' ? value.baseURL : ''),
+        model: drafts.get('model')?.text ?? (typeof value?.model === 'string' ? value.model : 'deepseek-v4-flash'),
+        apiKey: drafts.get('apiKey')?.text ?? (typeof value?.apiKey === 'string' ? value.apiKey : ''),
+      }
+    }
 
     const edit = (field: string, text: string): void => {
       drafts.set(field, { text, dirty: true })
@@ -154,8 +172,33 @@ export function apply(ctx: ClientContext): void {
       publish()
     }
 
+    /** Probe the search endpoint with the current draft values (no persistence). */
+    const test = async (): Promise<void> => {
+      if (testing || saving) return
+      testing = true
+      testResult = null
+      publish()
+      try {
+        testResult = await testSearchConnection(draftValues())
+      } finally {
+        testing = false
+        publish()
+      }
+    }
+
     const save = async (): Promise<void> => {
       if (saving || !Array.from(drafts.values()).some(d => d.dirty)) return
+      // Connectivity gate: probe the current drafts first. Hard config errors
+      // block the save; transient (429/5xx/timeout) and unverifiable
+      // (server-side key / CORS) outcomes warn but allow it.
+      testing = true
+      testResult = null
+      publish()
+      const outcome = await testSearchConnection(draftValues())
+      testing = false
+      testResult = outcome
+      publish()
+      if (!outcome.canSave) return
       saving = true
       failed = false
       publish()
@@ -190,6 +233,7 @@ export function apply(ctx: ClientContext): void {
       edit,
       discard,
       save,
+      test,
     })
 
     scoped.slots.inject('settings.section', () => scoped.slots.register({

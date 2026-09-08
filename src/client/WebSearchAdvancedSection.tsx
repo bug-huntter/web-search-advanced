@@ -1,5 +1,6 @@
 import React, { type ReactNode, useId, type ChangeEvent, useSyncExternalStore } from "react"
 import type { WebSearchAdvancedKey } from "./locales.ts"
+import type { TestOutcome } from "./testConnection.ts"
 
 export interface WebSearchAdvancedSectionState {
   status: "loading" | "ready" | "unavailable"
@@ -12,6 +13,8 @@ export interface WebSearchAdvancedSectionState {
   dirty: boolean
   saving: boolean
   failed: boolean
+  testing: boolean
+  testResult: TestOutcome | null
 }
 
 export interface WebSearchAdvancedSectionInjected {
@@ -23,6 +26,7 @@ export interface WebSearchAdvancedSectionInjected {
   edit: (field: string, text: string) => void
   discard: () => void
   save: () => void
+  test: () => Promise<void>
 }
 
 export type WebSearchAdvancedSectionProps = WebSearchAdvancedSectionInjected
@@ -37,6 +41,11 @@ const st: Record<string, Record<string, string | number>> = {
   input: { width: "100%", boxSizing: "border-box", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "8px", padding: "8px 12px", font: "inherit", fontSize: "14px", lineHeight: 1.5, color: "var(--dsw-alias-label-primary)", background: "var(--dsw-alias-bg-layer-3)", transition: "border-color 0.16s", outline: "none" },
   footer: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", paddingTop: "16px", borderTop: "1px solid var(--dsw-alias-border-l2)", marginTop: "8px" },
   failed: { flex: 1, minWidth: 0, margin: 0, fontSize: "12px", lineHeight: 1.5, color: "var(--dsw-alias-label-error)" },
+  testRow: { display: "flex", alignItems: "flex-start", gap: "10px", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--dsw-alias-border-l2)" },
+  testBtn: { flex: "none", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "8px", padding: "5px 14px", font: "inherit", fontSize: "13px", lineHeight: 1.5, cursor: "pointer", color: "var(--dsw-alias-label-primary)", background: "var(--dsw-alias-bg-layer-3)" },
+  testResult: { flex: 1, minWidth: 0, margin: 0, fontSize: "12px", lineHeight: 1.6, color: "var(--dsw-alias-label-tertiary)", whiteSpace: "pre-wrap", wordBreak: "break-word" },
+  testOk: { flex: 1, minWidth: 0, margin: 0, fontSize: "12px", lineHeight: 1.6, color: "var(--dsw-alias-label-success, #2ea043)" },
+  testWarn: { flex: 1, minWidth: 0, margin: 0, fontSize: "12px", lineHeight: 1.6, color: "var(--dsw-alias-label-warning, #b88700)" },
   disabled: { opacity: 0.4, cursor: "default" },
   discardBtn: { appearance: "none", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "8px", padding: "5px 14px", font: "inherit", fontSize: "13px", lineHeight: 1.5, cursor: "pointer", background: "none", color: "var(--dsw-alias-label-secondary)" },
   saveBtn: { appearance: "none", border: "1px solid transparent", borderRadius: "8px", padding: "5px 14px", font: "inherit", fontSize: "13px", lineHeight: 1.5, cursor: "pointer", background: "var(--dsw-alias-label-primary)", color: "var(--dsw-alias-bg-layer-3)" },
@@ -51,7 +60,7 @@ function m(base: Record<string, string | number>, overrides: Record<string, stri
 }
 
 export function WebSearchAdvancedSection(props: WebSearchAdvancedSectionProps): ReactNode {
-  const { store, t, edit, discard, save } = props
+  const { store, t, edit, discard, save, test } = props
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const fieldId = useId()
 
@@ -59,10 +68,11 @@ export function WebSearchAdvancedSection(props: WebSearchAdvancedSectionProps): 
     return React.createElement("div", { style: st.section }, React.createElement("p", { style: st.hint }, state.status === "loading" ? "Loading\u2026" : "Unavailable"))
   }
 
-  const dis = !state.writable || state.saving
+  const dis = !state.writable || state.saving || state.testing
   const disInput = dis ? m(st.input, { opacity: 0.5, cursor: "default" }) : st.input
   const disDis = dis ? m(st.discardBtn, st.disabled) : st.discardBtn
   const disSav = dis || !state.dirty ? m(st.saveBtn, st.disabled) : st.saveBtn
+  const disTest = state.testing || state.saving || !state.writable ? m(st.testBtn, st.disabled) : st.testBtn
 
   return React.createElement("div", { style: st.section },
     React.createElement("h2", { style: st.heading }, t("title")),
@@ -111,10 +121,23 @@ export function WebSearchAdvancedSection(props: WebSearchAdvancedSectionProps): 
       React.createElement("p", { style: st.hint }, t("card.maxUsesHint"))
     ),
 
+    React.createElement("div", { style: st.testRow },
+      React.createElement("button", { type: "button", style: disTest, disabled: state.testing || state.saving || !state.writable, onClick: () => void test() }, t("test.button")),
+      state.testing
+        ? React.createElement("p", { style: st.testResult }, t("test.testing"))
+        : state.testResult === null
+          ? React.createElement("p", { style: st.testResult }, t("test.hint"))
+          : state.testResult.ok
+            ? React.createElement("p", { style: st.testOk, role: "status" }, t("test.ok") + "\uFF1A" + state.testResult.message)
+            : state.testResult.canSave
+              ? React.createElement("p", { style: st.testWarn, role: "status" }, t("test.warn") + "\uFF1A" + state.testResult.message)
+              : React.createElement("p", { style: st.failed, role: "status" }, t("test.blocked") + "\uFF1A" + state.testResult.message)
+    ),
+
     React.createElement("div", { style: st.footer },
       state.failed ? React.createElement("p", { style: st.failed, role: "status" }, t("saveFailed")) : null,
-      React.createElement("button", { type: "button", style: disDis, disabled: !state.dirty || state.saving, onClick: discard }, t("discard")),
-      React.createElement("button", { type: "button", style: disSav, disabled: !state.dirty || state.saving, onClick: save }, t(state.saving ? "saving" : "save"))
+      React.createElement("button", { type: "button", style: disDis, disabled: !state.dirty || state.saving || state.testing, onClick: discard }, t("discard")),
+      React.createElement("button", { type: "button", style: disSav, disabled: !state.dirty || state.saving || state.testing, onClick: () => void save() }, t(state.saving ? "saving" : "save"))
     )
   )
 }

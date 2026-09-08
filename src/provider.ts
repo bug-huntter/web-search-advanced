@@ -1,4 +1,4 @@
-﻿import { WebError } from '@deepseek-ai/dsh-web'
+import { WebError } from '@deepseek-ai/dsh-web'
 import type {
   WebSearchProvider,
   WebSearchRequest,
@@ -19,7 +19,7 @@ export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-v4-flash'
 export const DEEPSEEK_DEFAULT_API_VERSION = '2023-06-01'
 export const DEEPSEEK_DEFAULT_MAX_TOKENS = 4096
 export const DEEPSEEK_DEFAULT_MAX_USES = 5
-const USER_AGENT = 'dsh-web-search-advanced/0.1.3'
+const USER_AGENT = 'dsh-web-search-advanced/0.1.4'
 
 export interface DeepSeekSearchLlmRequest {
   readonly endpoint: string
@@ -67,6 +67,8 @@ export interface DeepSeekSearchProviderOptions {
   apiVersion: string
   maxTokens: number
   maxUses: number
+  /** Exponential-backoff retries for transient failures (429 / 5xx / network). Default 3. */
+  maxRetries?: number
   searchProvider?: WebSearchProviderKind
   recordRequest?: (request: DeepSeekSearchLlmRequest | CustomWebSearchLlmRequest) => void
 }
@@ -167,30 +169,32 @@ export class DeepSeekSearchProvider implements WebSearchProvider {
       tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: options.maxUses }],
     }
     options.recordRequest?.({ endpoint, apiVersion: options.apiVersion, body })
-    throwIfSearchAborted(signal)
-    let response: Response
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST', redirect: 'error',
-        headers: { 'x-api-key': apiKey, 'authorization': `Bearer ${apiKey}`, 'anthropic-version': options.apiVersion, 'content-type': 'application/json', 'accept': 'application/json', 'user-agent': USER_AGENT },
-        body: JSON.stringify(body), ...signal !== undefined ? { signal } : {},
-      })
-    } catch (error: unknown) {
-      if (signal?.aborted === true || isAbortError(error)) throw searchAborted(signal, error)
-      throw new WebError(`DeepSeek search request failed: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
-    }
-    if (!response.ok) {
-      let message = `DeepSeek API error (HTTP ${response.status})`
-      try { const p = await response.json() as AnthropicError; const d = typeof p.error === 'string' ? p.error : p.error?.message ?? p.message; if (d !== undefined && d.length > 0) message = d }
-      catch (e) { if (signal?.aborted === true || isAbortError(e)) throw searchAborted(signal, e) }
-      throw new WebError(message, 'WEB_PROVIDER_ERROR')
-    }
-    try { return mapAnthropicResponse(await response.json() as AnthropicResponse) }
-    catch (error: unknown) {
-      if (signal?.aborted === true || isAbortError(error)) throw searchAborted(signal, error)
-      if (error instanceof WebError) throw error
-      throw new WebError(`DeepSeek returned an unprocessable response body: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
-    }
+    return withRetry(async (innerSignal) => {
+      throwIfSearchAborted(innerSignal)
+      let response: Response
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST', redirect: 'error',
+          headers: { 'x-api-key': apiKey, 'authorization': `Bearer ${apiKey}`, 'anthropic-version': options.apiVersion, 'content-type': 'application/json', 'accept': 'application/json', 'user-agent': USER_AGENT },
+          body: JSON.stringify(body), ...innerSignal !== undefined ? { signal: innerSignal } : {},
+        })
+      } catch (error: unknown) {
+        if (innerSignal?.aborted === true || isAbortError(error)) throw searchAborted(innerSignal, error)
+        throw new WebError(`DeepSeek search request failed: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
+      }
+      if (!response.ok) {
+        let message = `DeepSeek API error (HTTP ${response.status})`
+        try { const p = await response.json() as AnthropicError; const d = typeof p.error === 'string' ? p.error : p.error?.message ?? p.message; if (d !== undefined && d.length > 0) message = d }
+        catch (e) { if (innerSignal?.aborted === true || isAbortError(e)) throw searchAborted(innerSignal, e) }
+        throw new SearchHttpError(message, { status: response.status, retryAfterSeconds: parseRetryAfterSeconds(response.headers.get('retry-after')) })
+      }
+      try { return mapAnthropicResponse(await response.json() as AnthropicResponse) }
+      catch (error: unknown) {
+        if (innerSignal?.aborted === true || isAbortError(error)) throw searchAborted(innerSignal, error)
+        if (error instanceof WebError) throw error
+        throw new WebError(`DeepSeek returned an unprocessable response body: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
+      }
+    }, { maxRetries: options.maxRetries, signal })
   }
 
   private async searchCustom(request: WebSearchRequest, options: DeepSeekSearchProviderOptions, apiKey: string, signal?: AbortSignal): Promise<WebSearchResult> {
@@ -201,25 +205,27 @@ export class DeepSeekSearchProvider implements WebSearchProvider {
       plugins: [{ id: 'web', max_results: options.maxUses }],
     }
     options.recordRequest?.({ endpoint, body })
-    throwIfSearchAborted(signal)
-    let response: Response
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST', redirect: 'error',
-        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json', accept: 'application/json', 'user-agent': USER_AGENT },
-        body: JSON.stringify(body), ...signal !== undefined ? { signal } : {},
-      })
-    } catch (error: unknown) {
-      if (signal?.aborted === true || isAbortError(error)) throw searchAborted(signal, error)
-      throw new WebError(`Custom web search request failed: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
-    }
-    if (!response.ok) throw await customHttpError(response, signal)
-    try { return mapOpenAIResponse(await response.json() as OpenAIResponse) }
-    catch (error: unknown) {
-      if (signal?.aborted === true || isAbortError(error)) throw searchAborted(signal, error)
-      if (error instanceof WebError) throw error
-      throw new WebError(`Custom web search returned an unprocessable response body: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
-    }
+    return withRetry(async (innerSignal) => {
+      throwIfSearchAborted(innerSignal)
+      let response: Response
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST', redirect: 'error',
+          headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json', accept: 'application/json', 'user-agent': USER_AGENT },
+          body: JSON.stringify(body), ...innerSignal !== undefined ? { signal: innerSignal } : {},
+        })
+      } catch (error: unknown) {
+        if (innerSignal?.aborted === true || isAbortError(error)) throw searchAborted(innerSignal, error)
+        throw new WebError(`Custom web search request failed: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
+      }
+      if (!response.ok) throw await customHttpError(response, innerSignal)
+      try { return mapOpenAIResponse(await response.json() as OpenAIResponse) }
+      catch (error: unknown) {
+        if (innerSignal?.aborted === true || isAbortError(error)) throw searchAborted(innerSignal, error)
+        if (error instanceof WebError) throw error
+        throw new WebError(`Custom web search returned an unprocessable response body: ${String(error)}`, 'WEB_PROVIDER_ERROR', { cause: error })
+      }
+    }, { maxRetries: options.maxRetries, signal })
   }
 
   private async apiKey(options: DeepSeekSearchProviderOptions, signal?: AbortSignal): Promise<string> {
@@ -237,14 +243,90 @@ export class DeepSeekSearchProvider implements WebSearchProvider {
   }
 }
 
-async function customHttpError(response: Response, signal?: AbortSignal): Promise<WebError> {
+/** HTTP error carrying the status and Retry-After so the retry loop can classify and schedule waits. */
+class SearchHttpError extends WebError {
+  readonly status: number | undefined
+  readonly retryAfterSeconds: number | undefined
+  constructor(message: string, options: { status?: number; retryAfterSeconds?: number; cause?: unknown } = {}) {
+    super(message, 'WEB_PROVIDER_ERROR', options.cause === undefined ? undefined : { cause: options.cause })
+    this.status = options.status
+    this.retryAfterSeconds = options.retryAfterSeconds
+  }
+}
+
+const RETRY_BASE_DELAY_MS = 1000
+const RETRY_MAX_DELAY_MS = 30_000
+const RETRY_COUNT_CAP = 10
+
+/** Transient failures worth retrying: 429 / 5xx, and network-level errors (fetch threw). */
+function isRetryableSearchError(error: unknown): boolean {
+  if (error instanceof SearchHttpError) {
+    return error.status !== undefined && (error.status === 429 || error.status >= 500)
+  }
+  // Structured WebErrors (bad response body, missing credentials, ...) are
+  // not transient; anything else (fetch threw, DNS, connection reset) is.
+  return !(error instanceof WebError)
+}
+
+/** Parse a `Retry-After` header (seconds form; HTTP-date form falls back to undefined). */
+function parseRetryAfterSeconds(header: string | null): number | undefined {
+  if (header === null) return undefined
+  const seconds = Number(header)
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined
+}
+
+/** Wait before the next attempt: Retry-After when present, else exponential backoff + jitter. */
+function retryDelayMs(error: unknown, attempt: number): number {
+  const retryAfter = (error as { retryAfterSeconds?: number })?.retryAfterSeconds
+  if (typeof retryAfter === 'number' && Number.isFinite(retryAfter) && retryAfter > 0) {
+    return Math.min(retryAfter * 1000, RETRY_MAX_DELAY_MS)
+  }
+  const base = RETRY_BASE_DELAY_MS * 2 ** Math.min(attempt, 6)
+  return Math.min(base + Math.floor(Math.random() * base * 0.25), RETRY_MAX_DELAY_MS)
+}
+
+/** Abortable sleep used between attempts. */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted === true) return Promise.reject(searchAborted(signal))
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms)
+    const onAbort = (): void => { clearTimeout(timer); reject(searchAborted(signal)) }
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+/**
+ * Run a transient-failure-prone attempt with exponential backoff (honoring
+ * Retry-After), stopping early on abort or on non-retryable errors.
+ */
+async function withRetry<T>(
+  attempt: (signal?: AbortSignal) => Promise<T>,
+  options: { maxRetries?: number; signal?: AbortSignal },
+): Promise<T> {
+  const maxRetries = Math.max(0, Math.min(Math.floor(options.maxRetries ?? 3), RETRY_COUNT_CAP))
+  let lastError: unknown
+  for (let tryCount = 0; tryCount <= maxRetries; tryCount++) {
+    if (options.signal?.aborted === true) throw searchAborted(options.signal)
+    try {
+      return await attempt(options.signal)
+    } catch (error: unknown) {
+      if (options.signal?.aborted === true || isAbortError(error)) throw searchAborted(options.signal, error)
+      lastError = error
+      if (!isRetryableSearchError(error) || tryCount === maxRetries) throw error
+      await sleep(retryDelayMs(error, tryCount), options.signal)
+    }
+  }
+  throw lastError
+}
+
+async function customHttpError(response: Response, signal?: AbortSignal): Promise<SearchHttpError> {
   let message = `Custom web search API error (HTTP ${response.status})`
   try {
     const p = await response.json() as { error?: { message?: string } | string; message?: string }
     const d = typeof p.error === 'string' ? p.error : p.error?.message ?? p.message
     if (d !== undefined && d.length > 0) message = d
   } catch (e) { if (signal?.aborted === true || isAbortError(e)) throw searchAborted(signal, e) }
-  return new WebError(message, 'WEB_PROVIDER_ERROR')
+  return new SearchHttpError(message, { status: response.status, retryAfterSeconds: parseRetryAfterSeconds(response.headers.get('retry-after')) })
 }
 
 function abortable<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {

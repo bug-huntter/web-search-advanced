@@ -51,6 +51,8 @@ export interface Config {
   apiVersion?: string
   maxTokens?: number
   maxUses?: number
+  /** Exponential-backoff retries for transient failures (429 / 5xx / network). Default 3. */
+  maxRetries?: number
   searchProvider?: SearchProvider
 }
 
@@ -62,6 +64,7 @@ export const Config: z<Config> = z.object({
   apiVersion: z.string().default(DEEPSEEK_DEFAULT_API_VERSION),
   maxTokens: z.number().step(1).min(1).default(DEEPSEEK_DEFAULT_MAX_TOKENS),
   maxUses: z.number().step(1).min(1).default(DEEPSEEK_DEFAULT_MAX_USES),
+  maxRetries: z.number().step(1).min(0).default(3),
   searchProvider: z.union(['deepseek', 'custom'] as const).default('deepseek'),
 })
 
@@ -92,6 +95,7 @@ function resolveOptions(ctx: Context, config: Config): DeepSeekSearchProviderOpt
     apiVersion: config.apiVersion ?? DEEPSEEK_DEFAULT_API_VERSION,
     maxTokens: config.maxTokens ?? DEEPSEEK_DEFAULT_MAX_TOKENS,
     maxUses: config.maxUses ?? DEEPSEEK_DEFAULT_MAX_USES,
+    maxRetries: config.maxRetries ?? 3,
     searchProvider: config.searchProvider ?? 'deepseek',
     recordRequest: (request) => {
       ctx.get('agents')?.currentInitiator()?.session.append('web/deepseek-search-llm-request', request)

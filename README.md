@@ -8,6 +8,13 @@ DeepSeek search and OpenAI-compatible "Custom" search providers.
 - Provider selector: `deepseek` (native) or `custom` (OpenAI-compatible, e.g. OpenRouter)
 - Settings section: provider choice, endpoint URL, model, API key, max searches
 - Two search backends: native DeepSeek `web_search_20250305` or an OpenAI-compatible web plugin
+- **Automatic retry (v0.1.4)**: transient failures (HTTP 429 / 5xx / network
+  errors) are retried with exponential backoff, honoring the server
+  `Retry-After` header (configurable `maxRetries`, default 3)
+- **Test before save (v0.1.4)**: the settings card probes the configured
+  endpoint (`/chat/completions` for Custom, `/messages` for DeepSeek) with the
+  current draft values before saving; real config errors (bad endpoint/model/key)
+  block the save, transient 429/5xx only warn
 
 ## DSH compatibility
 
@@ -35,6 +42,11 @@ DeepSeek uses `https://api.deepseek.com/anthropic/v1`, while Custom uses
 - `searchProvider: deepseek` uses this plugin's DeepSeek branch.
 - `searchProvider: custom` uses the configured OpenAI-compatible
   `baseURL` / `model`, for example OpenRouter.
+- `maxRetries: 3` (optional) — exponential-backoff retries for transient
+  failures (429 / 5xx / network), default 3.
+
+Settings persist in `~/.dsh/settings.yaml` under the `web-search-advanced`
+namespace and survive DSH restarts until deleted.
 
 The package patch also selects the built-in `http` fetch provider so search
 results can be opened without an additional profile change.

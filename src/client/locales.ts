@@ -1,4 +1,4 @@
-﻿export type WebSearchAdvancedKey =
+export type WebSearchAdvancedKey =
   | 'section.nav'
   | 'title' | 'description'
   | 'card.provider' | 'card.providerHint' | 'card.deepseek' | 'card.custom'
@@ -8,6 +8,7 @@
   | 'card.maxUses' | 'card.maxUsesHint'
   | 'overridden' | 'reset'
   | 'save' | 'saving' | 'discard' | 'saveFailed' | 'invalidNumber'
+  | 'test.button' | 'test.testing' | 'test.hint' | 'test.ok' | 'test.warn' | 'test.blocked'
   | 'readOnly'
 
 export const en: Record<WebSearchAdvancedKey, string> = {
@@ -35,6 +36,12 @@ export const en: Record<WebSearchAdvancedKey, string> = {
   'discard': 'Discard',
   'saveFailed': 'The deployment did not accept these values.',
   'invalidNumber': 'Enter a number, or leave blank to use the default.',
+  'test.button': 'Test connection',
+  'test.testing': 'Testing connection\u2026',
+  'test.hint': 'A connectivity check runs automatically with the current draft config before saving; you can also run it manually here. Only real config errors (bad endpoint/model/key) block the save \u2014 transient 429/5xx still save.',
+  'test.ok': 'Test passed',
+  'test.warn': 'Test not fully passed (save still allowed)',
+  'test.blocked': 'Test failed \u2014 save blocked',
   'readOnly': 'Read only',
 }
 
@@ -63,5 +70,11 @@ export const zh: Record<WebSearchAdvancedKey, string> = {
   'discard': '\u653E\u5F03\u4FEE\u6539',
   'saveFailed': '\u672C\u90E8\u7F72\u6CA1\u6709\u63A5\u53D7\u8FD9\u4E9B\u503C\u3002',
   'invalidNumber': '\u8BF7\u586B\u6570\u5B57\uFF1B\u7559\u7A7A\u8868\u793A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002',
+  'test.button': '\u6D4B\u8BD5\u8FDE\u63A5',
+  'test.testing': '\u6B63\u5728\u6D4B\u8BD5\u8FDE\u63A5\u2026',
+  'test.hint': '\u4FDD\u5B58\u524D\u4F1A\u81EA\u52A8\u7528\u5F53\u524D\u914D\u7F6E\u6D4B\u8BD5\u8FDE\u901A\u6027\uFF0C\u4E5F\u53EF\u70B9\u6B64\u624B\u52A8\u6D4B\u8BD5\u3002\u53EA\u6709\u914D\u7F6E\u7C7B\u9519\u8BEF\uFF08\u5730\u5740/\u6A21\u578B/\u5BC6\u94A5\u65E0\u6548\uFF09\u624D\u963B\u6B62\u4FDD\u5B58\uFF1B429/5xx \u7B49\u4E34\u65F6\u9519\u8BEF\u4ECD\u53EF\u4FDD\u5B58\u3002',
+  'test.ok': '\u6D4B\u8BD5\u901A\u8FC7',
+  'test.warn': '\u6D4B\u8BD5\u672A\u5B8C\u5168\u901A\u8FC7\uFF08\u4ECD\u53EF\u4FDD\u5B58\uFF09',
+  'test.blocked': '\u6D4B\u8BD5\u672A\u901A\u8FC7\uFF0C\u5DF2\u963B\u6B62\u4FDD\u5B58',
   'readOnly': '\u53EA\u8BFB',
 }
