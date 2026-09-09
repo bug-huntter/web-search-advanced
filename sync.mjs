@@ -4,7 +4,7 @@
  * DSH installs plugins under `~/.dsh/profiles/<profile>/node_modules`, so a
  * workspace build does not update what DSH loads until the copy is made.
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'

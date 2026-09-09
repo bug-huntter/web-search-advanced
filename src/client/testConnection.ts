@@ -43,6 +43,19 @@ function outcome(category: TestCategory, ok: boolean, status: number, message: s
 }
 
 /**
+ * Detect the classic "key pasted with stray quotes/whitespace" failure mode and
+ * surface a hint so a real auth error isn't confused with a bad endpoint/model.
+ */
+function apiKeyFormatHint(key: string): string {
+  const trimmed = key.trim()
+  const doubleQuoted = trimmed.length >= 2 && trimmed[0] === '"' && trimmed[trimmed.length - 1] === '"'
+  if (doubleQuoted || trimmed.includes('"') || /\s/.test(key)) {
+    return '（提示：API Key 似乎误带了引号或空格——粘贴时带入多余字符是鉴权失败的常见原因）'
+  }
+  return ''
+}
+
+/**
  * Probe the configured search endpoint with a trivial one-token request:
  * `POST {baseURL}/chat/completions` (custom) or `POST {baseURL}/messages`
  * (deepseek, Anthropic-style). Any 2xx counts as reachable.
@@ -89,8 +102,11 @@ export async function testSearchConnection(values: TestValues, timeoutMs = 20000
   if (status === 429 || status >= 500) {
     return outcome('transient', false, status, `${message}（临时限流/上游错误，配置本身通常有效）`)
   }
-  if ((status === 401 || status === 403) && values.apiKey.length === 0) {
-    return outcome('unverifiable', false, status, `${message}（密钥由服务端解析，浏览器无法验证鉴权；保存后实际使用时会按服务端解析的密钥鉴权）`)
+  if (status === 401 || status === 403) {
+    if (values.apiKey.length === 0) {
+      return outcome('unverifiable', false, status, `${message}（密钥由服务端解析，浏览器无法验证鉴权；保存后实际使用时会按服务端解析的密钥鉴权）`)
+    }
+    return outcome('config', false, status, `${message}${apiKeyFormatHint(values.apiKey)}`)
   }
   return outcome('config', false, status, message)
 }
