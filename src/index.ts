@@ -57,7 +57,7 @@ export interface Config {
 }
 
 export const Config: z<Config> = z.object({
-  apiKey: z.string().role('secret'),
+  apiKey: z.string().default(''),
   apiKeyEnv: z.string().role('credential-ref').default(DEFAULT_API_KEY_ENV),
   baseURL: z.string(),
   model: z.string().default(DEEPSEEK_DEFAULT_MODEL),
